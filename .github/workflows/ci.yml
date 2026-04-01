@@ -3,67 +3,60 @@ name: CI
 on:
   push:
     branches: [main, master, develop]
-
   pull_request:
     branches: [main, master, develop]
 
 jobs:
-  backend:
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    defaults:
-      run:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install dependencies (backend)
         working-directory: backend
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install dependencies
         run: npm ci
 
-      - name: Lint backend
-        run: npm run lint
-
-      - name: Typecheck backend
-        run: npx tsc --noEmit
-
-      - name: Test backend
-        run: npm run test:coverage
-
-  frontend:
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
+      - name: Install dependencies (frontend)
         working-directory: frontend
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
         run: npm ci
 
-      - name: Lint frontend
+      - name: Install root tooling (husky, lint-staged, prettier)
+        run: npm ci
+
+      - name: ESLint
         run: npm run lint
 
-      - name: Build frontend
-        run: npm run build
+      - name: TypeScript (tsc --noEmit)
+        run: npm run typecheck
 
-      - name: Test frontend
+      - name: Tests with coverage
         run: npm run test:coverage
+
+      - name: Vérifier couverture ≥ 90 % (lignes)
+        run: npm run coverage:check
+
+      - name: Upload coverage to Codecov (backend)
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/coverage/lcov.info
+          flags: backend
+          fail_ci_if_error: false
+
+      - name: Upload coverage to Codecov (frontend)
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: frontend/coverage/lcov.info
+          flags: frontend
+          fail_ci_if_error: false
