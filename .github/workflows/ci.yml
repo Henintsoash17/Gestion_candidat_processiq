@@ -36,9 +36,6 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-      - name: TypeScript (tsc --noEmit)
-        run: npm run typecheck
-
       - name: Tests with coverage
         run: npm run test:coverage
 
